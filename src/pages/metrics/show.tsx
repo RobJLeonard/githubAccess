@@ -6,8 +6,8 @@ import Page from '../../components/layout/Page'
 import Container from '../../components/layout/Container'
 
 import { ApplicationState, ConnectedReduxProps } from '../../store'
-import { Hero } from '../../store/heroes/types'
-import { fetchRequest } from '../../store/heroes/actions'
+import { User, Friend } from '../../store/metrics/types'
+import { fetchUserRequest, fetchFriendsRequest } from '../../store/metrics/actions'
 import styled, { Theme } from '../../utils/styled'
 import LoadingOverlay from '../../components/data/LoadingOverlay'
 import LoadingOverlayInner from '../../components/data/LoadingOverlayInner'
@@ -18,22 +18,21 @@ import { Themed } from 'react-emotion'
 // Separate state props + dispatch props to their own interfaces.
 interface PropsFromState {
   loading: boolean
-  data: Hero[]
+  data: User
   errors: string
+  username: string
 }
 
 // We can use `typeof` here to map our dispatch types to the props, like so.
 interface PropsFromDispatch {
-  fetchRequest: typeof fetchRequest
+  fetchUserRequest: typeof fetchUserRequest
+  fetchFriendsRequest: typeof fetchFriendsRequest
 }
 
 interface RouteParams {
   name: string
 }
 
-interface State {
-  selected?: Hero
-}
 
 // Combine both state + dispatch props - as well as any props we want to pass - in a union type.
 type AllProps = PropsFromState &
@@ -41,9 +40,7 @@ type AllProps = PropsFromState &
   RouteComponentProps<RouteParams> &
   ConnectedReduxProps
 
-const API_ENDPOINT = process.env.REACT_APP_API_ENDPOINT || 'https://api.opendota.com'
-
-class ShowHeroesPage extends React.Component<AllProps, State> {
+class ShowRepoPage extends React.Component<AllProps> {
   constructor(props: AllProps) {
     super(props)
 
@@ -53,21 +50,21 @@ class ShowHeroesPage extends React.Component<AllProps, State> {
   }
 
   public componentDidMount() {
-    const { data } = this.props
 
-    if (!data || data.length === 0) {
-      this.props.fetchRequest()
-    }
+
   }
 
   public render() {
-    const { data, loading, match } = this.props
-    const selected = data.find(hero => hero.name === match.params.name)
+    const { username, loading, match, data } = this.props
+
+
+    const selected = data.find(repo => repo.name === match.params.name)
+
 
     return (
       <Page>
         <Container>
-          <Wrapper>
+          <MetricWrapper>
             {loading && (
               <LoadingOverlay>
                 <LoadingOverlayInner>
@@ -75,34 +72,8 @@ class ShowHeroesPage extends React.Component<AllProps, State> {
                 </LoadingOverlayInner>
               </LoadingOverlay>
             )}
-            {selected && (
-              <HeroInfobox>
-                <HeroInfoboxBlurBackground src={API_ENDPOINT + selected.img} />
-                <HeroInfoboxInner>
-                  <HeroInfoboxImage src={API_ENDPOINT + selected.img} />
-                  <HeroInfoboxHeading>
-                    <HeroName>{selected.localized_name}</HeroName>
-                    <HeroDetails>
-                      {selected.attack_type} - <span>{selected.roles.join(', ')}</span>
-                    </HeroDetails>
-                  </HeroInfoboxHeading>
-                  <HeroStats>
-                    <HeroStatsInner>
-                      <StatAttribute attr="str" isPrimaryAttr={selected.primary_attr === 'str'}>
-                        <Bullet attr="str" /> {selected.base_str || 0} + {selected.str_gain || 0}
-                      </StatAttribute>
-                      <StatAttribute attr="agi" isPrimaryAttr={selected.primary_attr === 'agi'}>
-                        <Bullet attr="agi" /> {selected.base_agi || 0} + {selected.agi_gain || 0}
-                      </StatAttribute>
-                      <StatAttribute attr="int" isPrimaryAttr={selected.primary_attr === 'int'}>
-                        <Bullet attr="int" /> {selected.base_int || 0} + {selected.int_gain || 0}
-                      </StatAttribute>
-                    </HeroStatsInner>
-                  </HeroStats>
-                </HeroInfoboxInner>
-              </HeroInfobox>
-            )}
-          </Wrapper>
+            {}
+          </MetricWrapper>
         </Container>
       </Page>
     )
@@ -112,16 +83,18 @@ class ShowHeroesPage extends React.Component<AllProps, State> {
 // It's usually good practice to only include one context at a time in a connected component.
 // Although if necessary, you can always include multiple contexts. Just make sure to
 // separate them from each other to prevent prop conflicts.
-const mapStateToProps = ({ heroes }: ApplicationState) => ({
-  loading: heroes.loading,
-  errors: heroes.errors,
-  data: heroes.data
+const mapStateToProps = ({ metrics }: ApplicationState) => ({
+  loading: metrics.loading,
+  errors: metrics.errors,
+  data: metrics.data,
+  username: metrics.username
 })
 
 // mapDispatchToProps is especially useful for constraining our actions to the connected component.
 // You can access these via `this.props`.
 const mapDispatchToProps = (dispatch: Dispatch) => ({
-  fetchRequest: () => dispatch(fetchRequest())
+  fetchRepoStats: (access_token: string) => dispatch(fetchUserRequest(access_token)),
+  fetchFriendsRequest: (access_token: string) => dispatch(fetchFriendsRequest(access_token))
 })
 
 // Now let's connect our component!
@@ -129,13 +102,20 @@ const mapDispatchToProps = (dispatch: Dispatch) => ({
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(ShowHeroesPage)
+)(ShowRepoPage)
+
+const MetricWrapper = styled('div')`
+  position: relative;
+  max-width: ${props => props.theme.widths.md};
+  margin: 0 auto;
+  min-height: 200px;
+`
 
 const Wrapper = styled('div')`
   position: relative;
 `
 
-const HeroInfobox = styled('div')`
+const UserInfobox = styled('div')`
   position: relative;
   background: rgba(0, 0, 0, 0.9);
   overflow: hidden;
@@ -143,7 +123,7 @@ const HeroInfobox = styled('div')`
   color: ${props => darken(0.25, props.theme.colors.white)};
 `
 
-const HeroInfoboxBlurBackground = styled('img')`
+const UserInfoboxBlurBackground = styled('img')`
   position: absolute;
   top: -12.5%;
   left: -12.5%;
@@ -156,7 +136,7 @@ const HeroInfoboxBlurBackground = styled('img')`
   z-index: 1;
 `
 
-const HeroInfoboxInner = styled('div')`
+const UserInfoboxInner = styled('div')`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -170,11 +150,11 @@ const HeroInfoboxInner = styled('div')`
   }
 `
 
-const HeroInfoboxImage = styled('img')`
+const UserInfoboxImage = styled('img')`
   display: block;
   flex-shrink: 0;
   width: 180px;
-  height: 128px;
+  height: 192px;
   box-shadow: rgba(0, 0, 0, 0.3) 0px 12px 32px;
   object-fit: cover;
   border-radius: 16px;
@@ -184,7 +164,7 @@ const HeroInfoboxImage = styled('img')`
   border-image: initial;
 `
 
-const HeroInfoboxHeading = styled('div')`
+const UserInfoboxHeading = styled('div')`
   flex: 1 1 100%;
   margin: 1.5rem 0 0;
   text-align: center;
@@ -195,13 +175,13 @@ const HeroInfoboxHeading = styled('div')`
   }
 `
 
-const HeroName = styled('h1')`
+const UserName = styled('h1')`
   margin: 0;
   color: ${props => props.theme.colors.white};
   font-weight: 500;
 `
 
-const HeroDetails = styled('p')`
+const UserDetails = styled('p')`
   margin: 0.5rem 0 0;
   color: ${props => props.theme.colors.white};
   font-size: 0.8rem;
@@ -213,9 +193,9 @@ const HeroDetails = styled('p')`
   }
 `
 
-const HeroStats = styled('div')`
+const UserStats = styled('div')`
   display: block;
-  max-width: 340px;
+  max-width: 500px;
   margin: 1.5rem 0 0;
   background: rgba(0, 0, 0, 0.45);
   border-radius: 8px;
@@ -227,12 +207,12 @@ const HeroStats = styled('div')`
   }
 `
 
-const HeroStatsInner = styled('div')`
+const UserStatsInner = styled('div')`
   display: flex;
 `
 
 interface StatAttributeProps {
-  attr: 'str' | 'agi' | 'int'
+  attr: string
   isPrimaryAttr?: boolean
 }
 
@@ -247,7 +227,7 @@ const StatAttribute = styled('div')`
 `
 
 interface BulletProps {
-  attr: 'str' | 'agi' | 'int'
+  attr: string
 }
 
 const Bullet = styled('div')`

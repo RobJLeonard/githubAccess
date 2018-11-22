@@ -1,6 +1,6 @@
 import { all, call, fork, put, takeEvery } from 'redux-saga/effects'
 import { IUsersActionTypes } from './types'
-import { fetchError, fetchTokenSuccess, fetchUserSuccess } from './actions'
+import { fetchError, fetchTokenSuccess, fetchUserSuccess, fetchFriendsSuccess } from './actions'
 import callApi from '../../utils/callApi'
 import { AnyAction } from 'redux';
 
@@ -57,6 +57,25 @@ function* handleFetchUser(action: AnyAction) {
   }
 }
 
+function* handleFetchFriends(action: AnyAction) {
+  try {
+    // To call async functions, use redux-saga's `call()`.
+    const res = yield call(callApi, 'get', API_ENDPOINT, '/user/followers?access_token=' + action.payload)
+
+    if (res.message) {
+      yield put(fetchError(res.message))
+    } else {
+      yield put(fetchFriendsSuccess(res))
+    }
+  } catch (err) {
+    if (err instanceof Error) {
+      yield put(fetchError(err.stack!))
+    } else {
+      yield put(fetchError('An unknown error occured.'))
+    }
+  }
+}
+
 // This is our watcher function. We use `take*()` functions to watch Redux for a specific action
 // type, and run our saga, for example the `handleFetch()` saga above.
 function* watchFetchTokenRequest() {
@@ -67,9 +86,13 @@ function* watchFetchUserRequest() {
   yield takeEvery(IUsersActionTypes.FETCH_USER_REQUEST, handleFetchUser)
 }
 
+function* watchFetchFriendsRequest() {
+  yield takeEvery(IUsersActionTypes.FETCH_FRIENDS_REQUEST, handleFetchFriends)
+}
+
 // We can also use `fork()` here to split our saga into multiple watchers.
 function* usersSaga() {
-  yield all([fork(watchFetchTokenRequest), fork(watchFetchUserRequest)])
+  yield all([fork(watchFetchTokenRequest), fork(watchFetchUserRequest), fork(watchFetchFriendsRequest)])
 }
 
 export default usersSaga

@@ -4,7 +4,7 @@ import { Route, Switch } from 'react-router-dom'
 import Root from './components/layout/Root'
 import Header from './components/layout/Header'
 import IndexPage from './pages/index'
-import TeamsPage from './pages/teams'
+import MetricsPage from './pages/metrics'
 import UsersPage from './pages/users'
 
 // If your app is big + you have routes with a lot of components, you should consider
@@ -22,7 +22,7 @@ const Routes: React.SFC = () => (
     <Switch>
       <Route exact path="/" component={IndexPage} />
       <Route path="/users" component={UsersPage} />
-      <Route path="/teams" component={TeamsPage} />
+      <Route path="/metrics" component={MetricsPage} />
       <Route component={() => <div>Not Found</div>} />
     </Switch>
   </Root>

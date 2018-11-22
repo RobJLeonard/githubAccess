@@ -12,22 +12,18 @@ import LoadingOverlayInner from '../../components/data/LoadingOverlayInner'
 import LoadingSpinner from '../../components/data/LoadingSpinner'
 
 import { ApplicationState, ConnectedReduxProps } from '../../store'
-import { User } from '../../store/users/types'
-import { fetchTokenRequest, fetchUserRequest } from '../../store/users/actions'
+import { User, Friend } from '../../store/users/types'
+import { fetchTokenRequest, fetchUserRequest, fetchFriendsRequest } from '../../store/users/actions'
 
 import { darken } from 'polished';
-
-
 
 const CLIENT_ID = "4cfba37be95601c9e08a";
 
 // DEVELOPMENT ADDRESS
-const HOME_URL = "http://localhost:1234";
 const REDIRECT_URI = "http://localhost:1234/#/users";
 
 // PRODUCTION ADDRESS
-// const HOME_URL = 'https://robjleonard.github.io/';
-// const REDIRECT_URI = 'https://robjleonard.github.io/';
+// const REDIRECT_URI = 'https://robjleonard.github.io/#/users';
 
 
 
@@ -38,12 +34,14 @@ interface PropsFromState {
   errors: string
   authenticated: boolean
   OAuthToken: string
+  friends: Friend[]
 }
 
 // We can use `typeof` here to map our dispatch types to the props, like so.
 interface PropsFromDispatch {
   fetchTokenRequest: typeof fetchTokenRequest
   fetchUserRequest: typeof fetchUserRequest
+  fetchFriendsRequest: typeof fetchFriendsRequest
 }
 
 // Combine both state + dispatch props - as well as any props we want to pass - in a union type.
@@ -57,7 +55,16 @@ class UserIndexPage extends React.Component<AllProps> {
     const code = queryData.code;
     if (code) {
       console.log('code recieved:' + code);
-      this.props.fetchTokenRequest(code)
+      this.props.fetchTokenRequest(code);
+    }
+  }
+
+  public componentDidUpdate() {
+    const { OAuthToken, user, friends } = this.props
+    if (OAuthToken && user === undefined) {
+      this.props.fetchUserRequest(OAuthToken);
+      if (friends.length === 0)
+        this.props.fetchFriendsRequest(OAuthToken);
     }
   }
 
@@ -65,8 +72,12 @@ class UserIndexPage extends React.Component<AllProps> {
     await this.props.fetchUserRequest(this.props.OAuthToken);
   }
 
+  fetchFriendInfo = async () => {
+    await this.props.fetchFriendsRequest(this.props.OAuthToken);
+  }
+
   public render() {
-    const { authenticated, loading } = this.props
+    const { authenticated, loading } = this.props;
 
     return (
       <Page>
@@ -79,14 +90,14 @@ class UserIndexPage extends React.Component<AllProps> {
               href={`https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&scope=user&redirect_uri=${REDIRECT_URI}`}
             >
               Login
-      </Button>
+            </Button>
             <Button
               style={{
                 display: authenticated ? "inline" : "none"
               }}
               onClick={this.fetchUserInfo}>
-              Fetch User Data
-      </Button>
+              Refresh User Data
+            </Button>
           </ButtonWrapper>
           <TableWrapper>
             {loading && (
@@ -96,14 +107,33 @@ class UserIndexPage extends React.Component<AllProps> {
                 </LoadingOverlayInner>
               </LoadingOverlay>
             )}
-            {authenticated && this.renderData()}
+            {authenticated && this.renderUserData()}
+          </TableWrapper>
+          <ButtonWrapper>
+            <Button
+              style={{
+                display: authenticated ? "inline" : "none"
+              }}
+              onClick={this.fetchFriendInfo}>
+              Refresh Friends Data
+            </Button>
+          </ButtonWrapper>
+          <TableWrapper>
+            {loading && (
+              <LoadingOverlay>
+                <LoadingOverlayInner>
+                  <LoadingSpinner />
+                </LoadingOverlayInner>
+              </LoadingOverlay>
+            )}
+            {authenticated && this.renderFriendsData()}
           </TableWrapper>
         </Container>
       </Page>
     )
   }
 
-  private renderData() {
+  private renderUserData() {
     const { loading, user } = this.props
 
     return (
@@ -131,6 +161,36 @@ class UserIndexPage extends React.Component<AllProps> {
       </DataTable>
     )
   }
+
+  private renderFriendsData() {
+    const { loading, friends } = this.props
+
+    return (
+      <DataTable columns={['Friends', 'Github', 'Repos']} widths={['auto', '', '']}>
+        {loading &&
+          friends === undefined && (
+            <UserLoading>
+              <td colSpan={3}>Loading...</td>
+            </UserLoading>
+          )}
+        {friends !== undefined &&
+          friends.map(Friend => (
+            <tr key={Friend.id}>
+              <UserDetail>
+                <UserIcon src={Friend.avatar_url} alt={Friend.login} />
+                <UserName>
+                  <Link to={`/Users/${Friend.login}`}>{Friend.login}</Link>
+                </UserName>
+              </UserDetail>
+              <td>
+                <a href={Friend.html_url}>GitHubLink</a>
+              </td>
+              <td>{Friend.repos_url}</td>
+            </tr>
+          ))}
+      </DataTable>
+    )
+  }
 }
 
 // It's usually good practice to only include one context at a time in a connected component.
@@ -141,14 +201,16 @@ const mapStateToProps = ({ users }: ApplicationState) => ({
   errors: users.errors,
   user: users.user,
   OAuthToken: users.OAuthToken,
-  authenticated: users.authenticated
+  authenticated: users.authenticated,
+  friends: users.friends
 })
 
 // mapDispatchToProps is especially useful for constraining our actions to the connected component.
 // You can access these via `this.props`.
 const mapDispatchToProps = (dispatch: Dispatch) => ({
   fetchTokenRequest: (code: string) => dispatch(fetchTokenRequest(code)),
-  fetchUserRequest: (access_token: string) => dispatch(fetchUserRequest(access_token))
+  fetchUserRequest: (access_token: string) => dispatch(fetchUserRequest(access_token)),
+  fetchFriendsRequest: (access_token: string) => dispatch(fetchFriendsRequest(access_token))
 })
 
 // Now let's connect our component!

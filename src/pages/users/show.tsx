@@ -6,8 +6,8 @@ import Page from '../../components/layout/Page'
 import Container from '../../components/layout/Container'
 
 import { ApplicationState, ConnectedReduxProps } from '../../store'
-import { User } from '../../store/users/types'
-import { fetchUserRequest } from '../../store/users/actions'
+import { User, Friend } from '../../store/users/types'
+import { fetchUserRequest, fetchFriendsRequest } from '../../store/users/actions'
 import styled, { Theme } from '../../utils/styled'
 import LoadingOverlay from '../../components/data/LoadingOverlay'
 import LoadingOverlayInner from '../../components/data/LoadingOverlayInner'
@@ -21,11 +21,13 @@ interface PropsFromState {
   user: User
   errors: string
   OAuthToken: string
+  friends: Friend[]
 }
 
 // We can use `typeof` here to map our dispatch types to the props, like so.
 interface PropsFromDispatch {
   fetchUserRequest: typeof fetchUserRequest
+  fetchFriendsRequest: typeof fetchFriendsRequest
 }
 
 interface RouteParams {
@@ -33,7 +35,7 @@ interface RouteParams {
 }
 
 interface State {
-  selected?: User
+  selected?: User | Friend
 }
 
 // Combine both state + dispatch props - as well as any props we want to pass - in a union type.
@@ -52,16 +54,35 @@ class ShowUsersPage extends React.Component<AllProps, State> {
   }
 
   public componentDidMount() {
-    const { user } = this.props
+    const { user, friends } = this.props
 
-    if (!user || user.length === 0) {
+    if (user === undefined) {
       this.props.fetchUserRequest(this.props.OAuthToken)
+    }
+    if (!friends || friends.length === 0) {
+      this.props.fetchFriendsRequest(this.props.OAuthToken)
     }
   }
 
   public render() {
-    const { user, loading } = this.props
-    const selected = user;
+    const { user, loading, friends, match } = this.props
+    let selected = undefined;
+    let isAuthUser = true;
+    if (user === undefined) {
+      return (
+        <LoadingOverlay>
+          <LoadingOverlayInner>
+            <LoadingSpinner />
+          </LoadingOverlayInner>
+        </LoadingOverlay>)
+    }
+    if (user.name === match.params.name) {
+      selected = user;
+    }
+    else {
+      selected = friends.find(friend => friend.login === match.params.name)
+      isAuthUser = false;
+    }
 
     return (
       <Page>
@@ -80,35 +101,41 @@ class ShowUsersPage extends React.Component<AllProps, State> {
                 <UserInfoboxInner>
                   <UserInfoboxImage src={selected.avatar_url} />
                   <UserInfoboxHeading>
-                    <UserName>{selected.name}</UserName>
+                    <UserName>{isAuthUser ? selected.name : selected.login}</UserName>
+                    {isAuthUser &&
+                      (<UserDetails>
+                        Company: {selected.company || "No company"}
+                      </UserDetails>)}
                     <UserDetails>
-                      Company: {selected.company || "No company"} - <span><a href={selected.url} >Github Link</a></span>
+                      <span><a href={selected.html_url} >Github Link</a></span>
                     </UserDetails>
                   </UserInfoboxHeading>
-                  <UserStats>
-                    <UserStatsInner>
-                      <StatAttribute attr="Public Repos" isPrimaryAttr={true}>
-                        Public Repos
+                  {isAuthUser &&
+                    (<UserStats>
+                      <UserStatsInner>
+                        <StatAttribute attr="Public Repos" isPrimaryAttr={true}>
+                          Public Repos
                         <Bullet attr="Public Repos" /> {selected.public_repos || 0}
-                      </StatAttribute>
-                      <StatAttribute attr="Followers" isPrimaryAttr={false}>
-                        Followers
+                        </StatAttribute>
+                        <StatAttribute attr="Followers" isPrimaryAttr={false}>
+                          Followers
                         <Bullet attr="Followers" /> {selected.followers || 0}
-                      </StatAttribute>
-                      <StatAttribute attr="Following" isPrimaryAttr={false}>
-                        Following
+                        </StatAttribute>
+                        <StatAttribute attr="Following" isPrimaryAttr={false}>
+                          Following
                         <Bullet attr="Following" /> {selected.following || 0}
-                      </StatAttribute>
-                      <StatAttribute attr="Disk Usage" isPrimaryAttr={false}>
-                        Disk Usage
+                        </StatAttribute>
+                        <StatAttribute attr="Disk Usage" isPrimaryAttr={false}>
+                          Disk Usage
                         <Bullet attr="Disk Usage" /> {selected.disk_usage || 0}
-                      </StatAttribute>
-                    </UserStatsInner>
-                  </UserStats>
+                        </StatAttribute>
+                      </UserStatsInner>
+                    </UserStats>)}
                 </UserInfoboxInner>
-                <UserInfoboxInner>
-                  {selected.bio}
-                </UserInfoboxInner>
+                {isAuthUser &&
+                  (<UserInfoboxInner>
+                    {selected.bio}
+                  </UserInfoboxInner>)}
               </UserInfobox>
             )}
           </Wrapper>
@@ -125,13 +152,15 @@ const mapStateToProps = ({ users }: ApplicationState) => ({
   loading: users.loading,
   errors: users.errors,
   user: users.user,
-  OAuthToken: users.OAuthToken
+  OAuthToken: users.OAuthToken,
+  friends: users.friends
 })
 
 // mapDispatchToProps is especially useful for constraining our actions to the connected component.
 // You can access these via `this.props`.
 const mapDispatchToProps = (dispatch: Dispatch) => ({
-  fetchUserRequest: (access_token: string) => dispatch(fetchUserRequest(access_token))
+  fetchUserRequest: (access_token: string) => dispatch(fetchUserRequest(access_token)),
+  fetchFriendsRequest: (access_token: string) => dispatch(fetchFriendsRequest(access_token))
 })
 
 // Now let's connect our component!
@@ -184,7 +213,7 @@ const UserInfoboxImage = styled('img')`
   display: block;
   flex-shrink: 0;
   width: 180px;
-  height: 128px;
+  height: 192px;
   box-shadow: rgba(0, 0, 0, 0.3) 0px 12px 32px;
   object-fit: cover;
   border-radius: 16px;

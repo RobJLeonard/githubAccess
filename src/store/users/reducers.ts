@@ -8,6 +8,7 @@ const initialState: IUsersPageState = {
     loading: false,
     authenticated: false,
     OAuthToken: undefined,
+    friends: []
 }
 
 // Thanks to Redux 4's much simpler typings, we can take away a lot of typings on the reducer side,
@@ -20,11 +21,17 @@ const reducer: Reducer<IUsersPageState> = (state = initialState, action) => {
         case IUsersActionTypes.FETCH_USER_REQUEST: {
             return { ...state, loading: true }
         }
+        case IUsersActionTypes.FETCH_FRIENDS_REQUEST: {
+            return { ...state, loading: true }
+        }
         case IUsersActionTypes.FETCH_TOKEN_SUCCESS: {
             return { ...state, loading: false, authenticated: true, OAuthToken: action.payload }
         }
         case IUsersActionTypes.FETCH_USER_SUCCESS: {
             return { ...state, loading: false, user: action.payload }
+        }
+        case IUsersActionTypes.FETCH_FRIENDS_SUCCESS: {
+            return { ...state, loading: false, friends: action.payload }
         }
         case IUsersActionTypes.FETCH_ERROR: {
             return { ...state, loading: false, errors: action.payload }

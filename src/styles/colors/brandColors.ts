@@ -10,7 +10,7 @@ const brandColors = {
   gray5: '#ebebea',
   white: '#fefefe',
   yellow: '#f3df49',
-  red: '#eb5558',
+  red: '#ec0000',
   green: '#9ee79a'
 }
 

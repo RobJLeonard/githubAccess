@@ -1,6 +1,8 @@
 # CS3012 Individual Project Git Access
 
-> This website is my submission for my Software Engineering Module CS3012 Individual Project.
+> This [website](https://robjleonard.github.io/) is my submission for my Software Engineering Module CS3012 Individual Project.
+
+## [Website Link](https://robjleonard.github.io/)
 
 The project brief was to write a piece of software to interrogate the [GitHub REST API v3](https://developer.github.com/v3/)
 

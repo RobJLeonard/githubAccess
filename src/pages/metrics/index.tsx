@@ -11,7 +11,7 @@ import LoadingOverlayInner from '../../components/data/LoadingOverlayInner'
 import LoadingSpinner from '../../components/data/LoadingSpinner'
 
 import { ApplicationState, ConnectedReduxProps } from '../../store'
-//import { Repo } from '../../store/metrics/types'
+import { Repo } from '../../store/metrics/types'
 import { changeUsername, fetchRepos } from '../../store/metrics/actions'
 
 import { darken } from 'polished';
@@ -19,7 +19,7 @@ import { darken } from 'polished';
 // Separate state props + dispatch props to their own interfaces.
 interface PropsFromState {
   loading: boolean
-  data: any
+  repos: Repo[]
   errors: string
   username: string
 }
@@ -112,18 +112,18 @@ class MetricsIndexPage extends React.Component<AllProps> {
 
 
   private renderData() {
-    const { loading, data } = this.props
+    const { loading, repos } = this.props
 
     return (
-      <DataTable columns={['Repo Name', 'Github Link', 'Size']} widths={['auto', '', '']}>
+      <DataTable columns={['Repo Name', 'Github Link', 'Language', 'Size']} widths={['auto', '', '']}>
         {loading &&
-          data === undefined && (
+          repos === undefined && (
             <RepoLoading>
               <td colSpan={3}>Loading...</td>
             </RepoLoading>
           )}
-        {data !== undefined && data.map !== undefined &&
-          data.map(Repo => (
+        {repos !== undefined && repos.map !== undefined &&
+          repos.map(Repo => (
             <tr key={Repo.id}>
               <RepoDetail>
                 <RepoIcon src={Repo.owner.avatar_url} alt={Repo.owner.login} />
@@ -133,6 +133,10 @@ class MetricsIndexPage extends React.Component<AllProps> {
               </RepoDetail>
               <td>
                 <a href={Repo.html_url}>GitHubLink</a>
+
+              </td>
+              <td>
+                {Repo.language ? Repo.language : "Not Available"}
               </td>
               <td>
                 {Repo.size / 1000 > 1 ? Repo.size / 1000000 > 1 ? Repo.size / 100000 + " GB " : Repo.size / 1000 + " MB" : Repo.size + " KB"}
@@ -150,7 +154,7 @@ class MetricsIndexPage extends React.Component<AllProps> {
 const mapStateToProps = ({ metrics }: ApplicationState) => ({
   loading: metrics.loading,
   errors: metrics.errors,
-  data: metrics.data,
+  repos: metrics.repos,
   username: metrics.username
 })
 

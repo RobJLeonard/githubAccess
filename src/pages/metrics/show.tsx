@@ -6,8 +6,8 @@ import Page from '../../components/layout/Page'
 import Container from '../../components/layout/Container'
 
 import { ApplicationState, ConnectedReduxProps } from '../../store'
-import { User, Friend } from '../../store/metrics/types'
-import { fetchUserRequest, fetchFriendsRequest } from '../../store/metrics/actions'
+import { Repo, Stats } from '../../store/metrics/types'
+import { fetchRepoStats } from '../../store/metrics/actions'
 import styled, { Theme } from '../../utils/styled'
 import LoadingOverlay from '../../components/data/LoadingOverlay'
 import LoadingOverlayInner from '../../components/data/LoadingOverlayInner'
@@ -15,18 +15,25 @@ import LoadingSpinner from '../../components/data/LoadingSpinner'
 import { darken } from 'polished'
 import { Themed } from 'react-emotion'
 
+import Chart from '../../components/Chart';
+
+import * as d3 from 'd3';
+import { d3Types } from '../../d3Types';
+import BarChart from '../../components/d3/BarChart';
+
 // Separate state props + dispatch props to their own interfaces.
 interface PropsFromState {
   loading: boolean
-  data: User
+  repos: Repo[]
   errors: string
   username: string
+  statsLoading: boolean
+  stats: Stats
 }
 
 // We can use `typeof` here to map our dispatch types to the props, like so.
 interface PropsFromDispatch {
-  fetchUserRequest: typeof fetchUserRequest
-  fetchFriendsRequest: typeof fetchFriendsRequest
+  fetchRepoStats: typeof fetchRepoStats
 }
 
 interface RouteParams {
@@ -41,41 +48,54 @@ type AllProps = PropsFromState &
   ConnectedReduxProps
 
 class ShowRepoPage extends React.Component<AllProps> {
-  constructor(props: AllProps) {
-    super(props)
+  ref: SVGSVGElement;
 
-    this.state = {
-      selected: undefined
-    }
-  }
-
-  public componentDidMount() {
-
-
+  componentDidMount() {
+    d3.select(this.ref)
+      .append("circle")
+      .attr("r", 50)
+      .attr("cx", window.screen.availWidth / 4)
+      .attr("cy", window.screen.availHeight / 4)
+      .attr("fill", "red");
+    //this.props.fetchRepoStats(this.props.username, this.props.match.params.name);
   }
 
   public render() {
-    const { username, loading, match, data } = this.props
+    const { statsLoading, match, repos, stats } = this.props
 
 
-    const selected = data.find(repo => repo.name === match.params.name)
+    const selected = repos.find(Repo => Repo.name === match.params.name)
+    const data = {
+      all: [4, 3, 5, 6, 7, 3],
+      owner: [0, 1, 2, 3, 4, 5]
+    }
 
 
     return (
       <Page>
         <Container>
           <MetricWrapper>
-            {loading && (
+            {statsLoading && (
               <LoadingOverlay>
                 <LoadingOverlayInner>
                   <LoadingSpinner />
                 </LoadingOverlayInner>
               </LoadingOverlay>
             )}
-            {}
+            <Chart data={...data.all} />
+            {stats !== undefined && stats.length !== 0 && false &&
+              (<BarChartWrapper>
+                <AllBarChart>
+                  <BarChart data={...data.all} color={'#ec0000'} size={[500, 500]} />
+                </AllBarChart>
+                <OwnerBarChart>
+                  <BarChart data={...data.owner} color={'#0000ec'} size={[500, 500]} />
+                </OwnerBarChart>
+              </BarChartWrapper>
+              )}
           </MetricWrapper>
         </Container>
-      </Page>
+      </Page >
     )
   }
 }
@@ -86,15 +106,16 @@ class ShowRepoPage extends React.Component<AllProps> {
 const mapStateToProps = ({ metrics }: ApplicationState) => ({
   loading: metrics.loading,
   errors: metrics.errors,
-  data: metrics.data,
-  username: metrics.username
+  repos: metrics.repos,
+  username: metrics.username,
+  stats: metrics.stats,
+  statsLoading: metrics.statsLoading
 })
 
 // mapDispatchToProps is especially useful for constraining our actions to the connected component.
 // You can access these via `this.props`.
 const mapDispatchToProps = (dispatch: Dispatch) => ({
-  fetchRepoStats: (access_token: string) => dispatch(fetchUserRequest(access_token)),
-  fetchFriendsRequest: (access_token: string) => dispatch(fetchFriendsRequest(access_token))
+  fetchRepoStats: (username: string, repo_name: string) => { const payload = { username: username, repo_name: repo_name }; dispatch(fetchRepoStats(payload)) }
 })
 
 // Now let's connect our component!
@@ -111,8 +132,23 @@ const MetricWrapper = styled('div')`
   min-height: 200px;
 `
 
-const Wrapper = styled('div')`
+const BarChartWrapper = styled('div')`
   position: relative;
+`
+
+const AllBarChart = styled('div')`
+  display: flex;
+  position: absolute;
+  align-items: center;
+  opacity: 0.5;
+  justify-content: center;
+`
+const OwnerBarChart = styled('div')`
+  display: flex;
+  position: absolute;
+  align-items: center;
+  opacity: 0.5;
+  justify-content: center;
 `
 
 const UserInfobox = styled('div')`
@@ -209,32 +245,4 @@ const UserStats = styled('div')`
 
 const UserStatsInner = styled('div')`
   display: flex;
-`
-
-interface StatAttributeProps {
-  attr: string
-  isPrimaryAttr?: boolean
-}
-
-const StatAttribute = styled('div')`
-  display: flex;
-  align-items: center;
-  flex: 1 1 0;
-  padding: 0 1rem;
-  font-size: 0.8rem;
-  color: ${(props: Themed<StatAttributeProps, Theme>) =>
-    props.isPrimaryAttr && props.theme.colors.attrs[props.attr]};
-`
-
-interface BulletProps {
-  attr: string
-}
-
-const Bullet = styled('div')`
-  flex-shrink: 0;
-  height: 0.5rem;
-  width: 0.5rem;
-  margin-right: 8px;
-  border-radius: 50%;
-  background-color: ${(props: Themed<BulletProps, Theme>) => props.theme.colors.attrs[props.attr]};
 `

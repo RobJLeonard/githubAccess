@@ -1,6 +1,6 @@
 import { all, call, fork, put, takeEvery } from 'redux-saga/effects'
 import { MetricsActionTypes } from './types'
-import { fetchError, fetchReposSuccess } from './actions'
+import { fetchError, fetchReposSuccess, fetchStatsSuccess } from './actions'
 import callApi from '../../utils/callApi'
 import { AnyAction } from 'redux';
 
@@ -34,17 +34,40 @@ function* handleFetchRepos(action: AnyAction) {
   }
 }
 
+function* handleFetchStats(action: AnyAction) {
+  try {
+    const username = action.payload.username
+    const repo_name = action.payload.repo_name
+    // To call async functions, use redux-saga's `call()`.
+    const res = yield call(callApi, 'get', API_ENDPOINT, `/repos/${username}/${repo_name}/stats/participation`)
+
+    if (res.message) {
+      yield put(fetchError(res.message))
+    } else {
+      yield put(fetchStatsSuccess(res))
+    }
+  } catch (err) {
+    if (err instanceof Error) {
+      yield put(fetchError(err.stack!))
+    } else {
+      yield put(fetchError('An unknown error occured.'))
+    }
+  }
+}
+
 // This is our watcher function. We use `take*()` functions to watch Redux for a specific action
 // type, and run our saga, for example the `handleFetch()` saga above.
 function* watchFetchReposRequest() {
   yield takeEvery(MetricsActionTypes.LOAD_REPOS, handleFetchRepos)
 }
 
-
+function* watchFetchStatsRequest() {
+  yield takeEvery(MetricsActionTypes.LOAD_STATS, handleFetchStats)
+}
 
 // We can also use `fork()` here to split our saga into multiple watchers.
 function* usersSaga() {
-  yield all([fork(watchFetchReposRequest)])
+  yield all([fork(watchFetchReposRequest), fork(watchFetchStatsRequest)])
 }
 
 export default usersSaga

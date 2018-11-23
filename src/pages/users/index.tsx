@@ -23,7 +23,7 @@ const CLIENT_ID = "4cfba37be95601c9e08a";
 const REDIRECT_URI = "http://localhost:1234/#/users";
 
 // PRODUCTION ADDRESS
-// const REDIRECT_URI = 'https://robjleonard.github.io/#/users';
+//const REDIRECT_URI = "https://robjleonard.github.io";
 
 
 

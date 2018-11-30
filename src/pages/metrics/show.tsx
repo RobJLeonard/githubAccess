@@ -15,11 +15,7 @@ import LoadingSpinner from '../../components/data/LoadingSpinner'
 import { darken } from 'polished'
 import { Themed } from 'react-emotion'
 
-import Chart from '../../components/Chart';
-
-import * as d3 from 'd3';
-import { d3Types } from '../../d3Types';
-import BarChart from '../../components/d3/BarChart';
+import Graph from '../../components/Graph';
 
 // Separate state props + dispatch props to their own interfaces.
 interface PropsFromState {
@@ -28,7 +24,7 @@ interface PropsFromState {
   errors: string
   username: string
   statsLoading: boolean
-  stats: Stats
+  stats: any
 }
 
 // We can use `typeof` here to map our dispatch types to the props, like so.
@@ -47,17 +43,51 @@ type AllProps = PropsFromState &
   RouteComponentProps<RouteParams> &
   ConnectedReduxProps
 
-class ShowRepoPage extends React.Component<AllProps> {
-  ref: SVGSVGElement;
+interface State {
+  graphData?: []
+}
+
+class ShowRepoPage extends React.Component<AllProps, State> {
 
   componentDidMount() {
-    d3.select(this.ref)
-      .append("circle")
-      .attr("r", 50)
-      .attr("cx", window.screen.availWidth / 4)
-      .attr("cy", window.screen.availHeight / 4)
-      .attr("fill", "red");
-    //this.props.fetchRepoStats(this.props.username, this.props.match.params.name);
+    this.props.fetchRepoStats(this.props.username, this.props.match.params.name);
+    this.state = {
+      graphData: []
+    }
+  }
+
+
+  commitData() {
+
+    const { stats } = this.props
+
+    var commitCounts = {};
+
+    // Loop over every commit
+    for (var commit in stats) {
+
+      var commitDate = new Date(stats[commit].commit.author.date.substring(0, 10))
+
+      // If commit count exists for that day, increment
+      if (commitCounts[commitDate]) {
+        commitCounts[commitDate]++;
+      } else {
+        commitCounts[commitDate] = 1;
+      }
+    }
+
+    // Get data for commit graph
+    let graphData = [];
+
+    // Convert commit stats to key:date, val:count object
+    for (var node in commitCounts) {
+      graphData.push({ x: new Date(node), y: commitCounts[node] })
+    }
+
+    return graphData;
+
+
+
   }
 
   public render() {
@@ -65,11 +95,8 @@ class ShowRepoPage extends React.Component<AllProps> {
 
 
     const selected = repos.find(Repo => Repo.name === match.params.name)
-    const data = {
-      all: [4, 3, 5, 6, 7, 3],
-      owner: [0, 1, 2, 3, 4, 5]
-    }
 
+    let graphData = this.commitData();
 
     return (
       <Page>
@@ -82,16 +109,69 @@ class ShowRepoPage extends React.Component<AllProps> {
                 </LoadingOverlayInner>
               </LoadingOverlay>
             )}
-            <Chart data={...data.all} />
-            {stats !== undefined && stats.length !== 0 && false &&
-              (<BarChartWrapper>
-                <AllBarChart>
-                  <BarChart data={...data.all} color={'#ec0000'} size={[500, 500]} />
-                </AllBarChart>
-                <OwnerBarChart>
-                  <BarChart data={...data.owner} color={'#0000ec'} size={[500, 500]} />
-                </OwnerBarChart>
-              </BarChartWrapper>
+            {stats !== undefined && stats.length !== 0 &&
+              (
+                <div >
+                  {selected && (
+                    <UserInfobox >
+                      <UserInfoboxBlurBackground src={selected.owner.avatar_url} />
+                      <UserInfoboxInner>
+                        <UserInfoboxImage src={selected.owner.avatar_url} />
+                        <UserInfoboxHeading>
+                          <UserName>{selected.name}</UserName>
+                          <UserDetails>
+                            {selected.full_name}
+                          </UserDetails>
+
+                          <UserDetails>
+                            Owner: {selected.owner.login}
+                          </UserDetails>
+                          <UserDetails>
+                            <span><a href={selected.html_url} >Github Link</a></span>
+                          </UserDetails>
+                          <UserDetails>
+                            <span><a href={selected.homepage} >Homepage</a></span>
+                          </UserDetails>
+                          <UserDetails>
+                            <span><a href={selected.languages_url} >{selected.language}</a></span>
+                          </UserDetails>
+                        </UserInfoboxHeading>
+
+                        <UserStats>
+                          <UserStatsInner>
+                            <StatAttribute attr="Stargazers" isPrimaryAttr={true}>
+                              Stargazers
+                             <Bullet attr="Stargazers" /> {selected.stargazers_count || 0}
+                            </StatAttribute>
+                            <StatAttribute attr="Forks Count" isPrimaryAttr={false}>
+                              Forks Count
+                             <Bullet attr="Forks Count" /> {selected.forks_count || 0}
+                            </StatAttribute>
+                          </UserStatsInner>
+                          <UserStatsInner>
+                            <StatAttribute attr="Disk Usage" isPrimaryAttr={false}>
+                              Disk Usage
+                             <Bullet attr="Disk Usage" /> {selected.size || 0}
+                            </StatAttribute>
+                            <StatAttribute attr="Open Issues" isPrimaryAttr={false}>
+                              Open Issues
+                             <Bullet attr="Open Issues" /> {selected.open_issues_count || 0}
+                            </StatAttribute>
+                          </UserStatsInner>
+                        </UserStats>
+
+
+
+
+                      </UserInfoboxInner>
+                      <UserInfoboxInner>
+                        {selected.description}
+                        <Graph graphData={graphData} />
+                      </UserInfoboxInner>
+                    </UserInfobox>
+                  )}
+
+                </div>
               )}
           </MetricWrapper>
         </Container>
@@ -127,29 +207,8 @@ export default connect(
 
 const MetricWrapper = styled('div')`
   position: relative;
-  max-width: ${props => props.theme.widths.md};
-  margin: 0 auto;
-  min-height: 200px;
 `
 
-const BarChartWrapper = styled('div')`
-  position: relative;
-`
-
-const AllBarChart = styled('div')`
-  display: flex;
-  position: absolute;
-  align-items: center;
-  opacity: 0.5;
-  justify-content: center;
-`
-const OwnerBarChart = styled('div')`
-  display: flex;
-  position: absolute;
-  align-items: center;
-  opacity: 0.5;
-  justify-content: center;
-`
 
 const UserInfobox = styled('div')`
   position: relative;
@@ -245,4 +304,32 @@ const UserStats = styled('div')`
 
 const UserStatsInner = styled('div')`
   display: flex;
+`
+
+interface StatAttributeProps {
+  attr: string
+  isPrimaryAttr?: boolean
+}
+
+const StatAttribute = styled('div')`
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  padding: 0 1rem;
+  font-size: 0.8rem;
+  color: ${(props: Themed<StatAttributeProps, Theme>) =>
+    props.isPrimaryAttr && props.theme.colors.attrs[props.attr]};
+`
+
+interface BulletProps {
+  attr: string
+}
+
+const Bullet = styled('div')`
+  flex-shrink: 0;
+  height: 0.5rem;
+  width: 0.5rem;
+  margin-right: 8px;
+  border-radius: 50%;
+  background-color: ${(props: Themed<BulletProps, Theme>) => props.theme.colors.attrs[props.attr]};
 `

@@ -39,7 +39,7 @@ function* handleFetchStats(action: AnyAction) {
     const username = action.payload.username
     const repo_name = action.payload.repo_name
     // To call async functions, use redux-saga's `call()`.
-    const res = yield call(callApi, 'get', API_ENDPOINT, `/repos/${username}/${repo_name}/stats/participation`)
+    const res = yield call(callApi, 'get', API_ENDPOINT, `/repos/${username}/${repo_name}/commits`)
 
     if (res.message) {
       yield put(fetchError(res.message))

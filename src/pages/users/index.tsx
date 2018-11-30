@@ -20,10 +20,10 @@ import { darken } from 'polished';
 const CLIENT_ID = "4cfba37be95601c9e08a";
 
 // DEVELOPMENT ADDRESS
-const REDIRECT_URI = "http://localhost:1234/#/users";
+//const REDIRECT_URI = "http://localhost:1234/#/users";
 
 // PRODUCTION ADDRESS
-//const REDIRECT_URI = "https://robjleonard.github.io";
+const REDIRECT_URI = "https://robjleonard.github.io";
 
 
 
